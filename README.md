@@ -1,99 +1,145 @@
-Algorithmic Trading System with ML and Interactive UI
-This project is a complete prototype of an algorithmic trading system built in Python. It features a command-line backtesting engine and an interactive web-based dashboard built with Streamlit.
+# Algorithmic Trading System (Python + Streamlit + ML)
 
-The system automatically fetches stock data, backtests a trading strategy based on technical indicators, logs performance to Google Sheets, and uses a machine learning model to predict future price movements.
+A prototype algorithmic trading system that:
+- Fetches equity data (NIFTY 50 tickers via yfinance)
+- Generates trading signals using technical indicators (RSI + SMA crossover)
+- Backtests and logs results to Google Sheets
+- Trains an ML model (RandomForest) to predict next-day price movement
+- Provides an interactive Streamlit dashboard for visual analysis
 
-Key Features
-📈 Automated Data Ingestion: Fetches daily stock data for specified NIFTY 50 stocks using the yfinance API.
+Badges:
+- Python >= 3.10
+- Streamlit
+- scikit-learn
+- pandas-ta
+- yfinance
+- gspread
 
-🧠 Trading Strategy Engine: Implements and backtests a trading strategy combining the Relative Strength Index (RSI) and a Moving Average Crossover (Golden Cross).
+Features
+- Automated data ingestion: Daily OHLCV with yfinance
+- Strategy engine: RSI + SMA(20/50) crossover buy logic, 15-day exit assumption
+- ML predictions: RandomForest with RSI, MACD, OBV, volume, MA-diff, pct change
+- Google Sheets logging: Trade journal, P&L summary, win ratio tabs
+- Interactive UI: Streamlit dashboard for multi-ticker backtests and charts
+- Optional alerts: Telegram bot notifications for signals/errors
 
-📊 Google Sheets Integration: Automatically logs a detailed trade journal, a summary of Profit & Loss (P&L), and the strategy's win ratio to designated tabs in a Google Sheet.
+System Architecture
+```mermaid
+graph LR
+    A[User/UI (Streamlit)] -->|configure tickers & dates| B[Data Fetcher (yfinance)]
+    B --> C[Indicators (pandas-ta)]
+    C --> D[Signal Generator (RSI + SMA20/50 crossover)]
+    C --> E[ML Features (MACD, OBV, ma_diff, pct_change)]
+    E --> F[ML Model (RandomForest)]
+    D --> G[Backtest + P&L calc (15-day exit)]
+    G --> H[Google Sheets (gspread)]
+    D --> I[Telegram Alerts (optional)]
+    F --> A
+    H --> A
+```
 
-🤖 Machine Learning Predictions: Utilizes a Random Forest model with feature engineering (RSI, MACD, OBV, Volume) and hyperparameter tuning to predict next-day price movement and reports its accuracy.
-
-🖥️ Interactive Streamlit Dashboard: A user-friendly web interface (ui.py) to visually run backtests, select stocks, set date ranges, and view results and charts in real-time.
-
-📢 Alerting Framework: Includes an optional Telegram bot integration for sending trade signals and error notifications.
+Tech Stack
+- Python, pandas, numpy
+- yfinance
+- pandas-ta
+- scikit-learn
+- Streamlit, Plotly
+- gspread, oauth2client
+- (Optional) python-telegram-bot
 
 Project Structure
-/algo_trading_project
-├── main.py             # Core script to run the backtesting engine
-├── ui.py               # Script to launch the interactive Streamlit UI
-├── strategy.py         # Contains the trading logic and signal generation
-├── ml_model.py         # ML model for price prediction and accuracy evaluation
-├── sheets.py           # Handles all Google Sheets integration
-├── utils.py            # Helper functions (logging, Telegram alerts)
-├── credentials.json    # (Required) Google API service account key
-└── requirements.txt    # List of all Python dependencies
+```
+algo-trading-system/
+├─ main.py          # Core pipeline: fetch → indicators → signals → ML → Sheets
+├─ ui.py            # Streamlit dashboard
+├─ strategy.py      # RSI + SMA(20/50) strategy and signal generation
+├─ ml_model.py      # Feature engineering + RandomForest training/eval
+├─ sheets.py        # Google Sheets auth + writing trades/P&L
+├─ utils.py         # Logging + Telegram alert helper
+├─ requirements.txt # Python dependencies (see note below)
+└─ credentials.json # Google service account key (not committed)
+```
 
-How to Run the Project
-You can run this project in two ways: through the command-line engine or the interactive web UI.
+Quick Start
+1) Clone and enter the project
+- git clone https://github.com/Aryanonghub/algo-trading-system.git
+- cd algo-trading-system
 
-Option 1: Run the Interactive Dashboard (Recommended)
-This is the easiest way to use the project.
+2) Create and activate a virtual environment
+- python -m venv venv
+- macOS/Linux: source venv/bin/activate
+- Windows (PowerShell): .\venv\Scripts\Activate.ps1
 
-streamlit run ui.py
+3) Install dependencies
+Note: requirements.txt currently needs a couple of fixes. Run:
+- pip install -r requirements.txt
+- pip install streamlit plotly pandas-ta python-telegram-bot
 
-Your web browser will automatically open a new tab with the dashboard, where you can configure and run your analysis visually.
+If you hit numpy conflicts, pin:
+- pip install "numpy==1.26.4"
 
-Option 2: Run the Core Backtesting Engine
-To run the automated backtesting script from your terminal:
+4) Google Sheets setup (required)
+- Create a Google Cloud project
+- Enable: Google Drive API and Google Sheets API
+- Create a Service Account with Editor role
+- Generate a JSON key; save as credentials.json in the project root
+- Share your target Google Sheet with the service account email (Editor access)
 
-python main.py
+Usage
+Option A — Interactive Dashboard (recommended)
+- streamlit run ui.py
+- In the sidebar: select NIFTY 50 tickers, choose date range, click “Run Analysis”
 
-The script will run with the default parameters set in the file and log the results to Google Sheets.
+Option B — CLI Backtesting Pipeline
+- python main.py
+- Uses defaults in main.py; logs to Google Sheets and algo_trading.log
 
-Setup and Installation
-Follow these steps to set up and run the project locally.
+Configuration Tips
+- Tickers: Edit nifty50_tickers in main.py; UI contains a curated set in ui.py
+- Date range: Set via Streamlit or adjust start/end in main.py
+- Exit rule horizon: In sheets.py the example P&L uses a 15-trading-day sell; change if needed
+- Sheet names/tabs: Update target sheet and worksheet titles in sheets.py
+- Logging: Outputs to algo_trading.log and console (see utils.setup_logging)
 
-1. Clone the Repository
-git clone <your-repository-url>
-cd algo_trading_project
+Google Sheets Output
+- Trades/Signals: Dated entries with buy events and prices
+- P&L Summary: Aggregated performance
+- Win Ratio: Strategy win percentage
 
-2. Create and Activate a Virtual Environment
-# Create the environment
-python -m venv venv
+Telegram Alerts (optional)
+- Install: pip install python-telegram-bot
+- Set your bot token and chat ID in utils.py (replace placeholders)
+- Or refactor to read from environment variables for production use
 
-# Activate it
-# On macOS/Linux:
-source venv/bin/activate
-# On Windows:
-# venv\Scripts\activate
+Troubleshooting
+- ModuleNotFoundError: pandas_ta
+  - pip install pandas-ta
+- Google auth errors
+  - Ensure credentials.json exists and matches the service account; the Sheet is shared with that service account email
+- Empty yfinance data
+  - Verify ticker symbols (e.g., RELIANCE.NS), date range, and network connectivity
+- Telegram import mismatch
+  - This code uses `import telegram` (python-telegram-bot). If you prefer pyTelegramBotAPI, adapt utils.py accordingly
+- requirements.txt oddities
+  - If you see “plotly yfinance” on one line or duplicate yfinance, install packages explicitly as listed above
 
-3. Install Dependencies
-Install all required libraries, including Streamlit for the UI.
+Roadmap
+- Parameterization for RSI/SMA/exit horizon from UI
+- Risk management: position sizing, stop-loss/take-profit
+- Portfolio-level metrics and equity curve
+- Strategy library (e.g., MACD, Bollinger Bands, mean reversion)
+- Live trading bridge (e.g., Zerodha/Upstox) with paper/live toggle
+- Dockerfile and CI checks
+- Unit tests for strategy and sheet utilities
 
-pip install -r requirements.txt
-pip install streamlit plotly
+Contributing
+- Fork the repo
+- Create a feature branch: git checkout -b feat/your-feature
+- Commit changes: git commit -m "Add your feature"
+- Push and open a PR
 
-Note: Ensure your requirements.txt specifies numpy==1.26.4 to avoid version conflicts.
+License
+- No license file currently. Consider adding a LICENSE (e.g., MIT) for clarity.
 
-4. Google API Setup (Crucial Step)
-Create a Google Cloud Project: Go to the Google Cloud Console and create a new project.
-
-Enable APIs: In your new project, enable the Google Drive API and the Google Sheets API.
-
-Create a Service Account: Navigate to "IAM & Admin" > "Service Accounts", create a new service account, and grant it the Editor role.
-
-Generate a JSON Key: Create a key for the new service account (Key type: JSON). A .json file will be downloaded.
-
-Add Credentials to Project: Rename the downloaded file to credentials.json and place it in the project root.
-
-Share Your Google Sheet: Create a new blank Google Sheet. Open the credentials.json file, copy the client_email address, and share your Google Sheet with that email, giving it Editor permissions.
-
-Implemented Trading Strategy
-The system generates a BUY signal when two conditions are met simultaneously for a stock:
-
-Oversold Condition: The 14-day RSI drops below 30.
-
-Bullish Confirmation: The 20-Day Moving Average (20-DMA) crosses above the 50-Day Moving Average (50-DMA).
-
-The backtest calculates P&L by assuming a sale 15 trading days after the buy signal.
-
-Machine Learning Model
-Model: RandomForestClassifier is used to predict if the next day's closing price will be higher (1) or lower (0).
-
-Features: The model is trained on a rich set of features, including RSI, MACD, On-Balance Volume (OBV), raw Trading Volume, and more.
-
-Tuning: The script uses GridSearchCV to automatically find the best hyperparameters for the model to improve its predictive accuracy.
+Disclaimer
+- Educational prototype. Not investment advice. Use at your own risk. Past performance does not guarantee future results.
