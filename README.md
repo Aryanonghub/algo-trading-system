@@ -175,9 +175,30 @@ pip install python-telegram-bot
 
 ---
 
+## 🌐 Streamlit Cloud Deployment
+
+1. Push this repository to **GitHub**.
+2. Go to [Streamlit Community Cloud](https://share.streamlit.io/).
+3. Select your repository, branch (`main`), and set **`ui.py`** as the entry point.
+4. Ensure `requirements.txt` contains **one dependency per line**:
+
+   ```txt
+   streamlit
+   pandas
+   numpy
+   yfinance
+   pandas-ta
+   scikit-learn
+   plotly
+   gspread
+   oauth2client
+   python-telegram-bot
+   ```
+5. Deploy — your app will be live with a public URL.
+
+---
+
 ## ⚠️ Disclaimer
 
 **Educational use only.** Not financial advice. Past performance does not guarantee future returns.
-
----
 
