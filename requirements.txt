@@ -1,5 +1,6 @@
 pandas
 numpy==1.26.4
+setuptools
 yfinance
 scikit-learn
 gspread
