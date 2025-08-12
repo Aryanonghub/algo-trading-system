@@ -1,5 +1,5 @@
 import logging
-import telegram
+import telebot
 
 # --- LOGGING SETUP ---
 
