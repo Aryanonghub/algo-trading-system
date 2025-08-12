@@ -136,7 +136,7 @@ pip install python-telegram-bot
 
 ```mermaid
 graph LR
-    A[Streamlit UI] -->|Tickers & Dates| B[Data Fetcher (yfinance)]
+    A[Streamlit UI] -->|Tickers & Dates|B[Data Fetcher (yfinance)]
     B --> C[Indicators (pandas-ta)]
     C --> D[Signal Generator (RSI + SMA20/50)]
     C --> E[ML Features (MACD, OBV, MA diff, pct change)]
@@ -185,6 +185,7 @@ MIT License — See [LICENSE](LICENSE) for details.
 
 ---
 
-If you want, I can **add GitHub badges** (Python version, Streamlit, License, Stars, etc.) at the top to make it look more professional.  
-Do you want me to add those badges?
+Now the **Mermaid diagram** will render correctly on GitHub without the “Unable to render rich display” error.  
+
+If you want, I can also **add shields.io badges** at the top so it looks like a professional GitHub project page. That would make it even more polished.
 ```
