@@ -132,20 +132,24 @@ pip install python-telegram-bot
 
 ---
 
-## 🧭 System Architecture
+## 🧭 System Architecture (Markdown Version)
 
-```mermaid
-graph LR
-    A[Streamlit UI] -->|Tickers & Dates|B[Data Fetcher (yfinance)]
-    B --> C[Indicators (pandas-ta)]
-    C --> D[Signal Generator (RSI + SMA20/50)]
-    C --> E[ML Features (MACD, OBV, MA diff, pct change)]
-    E --> F[ML Model (RandomForest)]
-    D --> G[Backtest + P&L (15-day exit)]
-    G --> H[Google Sheets Logging]
-    D --> I[Telegram Alerts]
-    F --> A
-    H --> A
+```
+[Streamlit UI]
+     |
+     v
+[Data Fetcher (yfinance)]
+     |
+     v
+[Indicators (pandas-ta)] ---> [Signal Generator (RSI + SMA20/50)] ---> [Backtest + P&L (15-day exit)] ---> [Google Sheets Logging]
+     |                              |                                        |
+     |                              v                                        v
+     |                       [Telegram Alerts]                           [Streamlit UI]
+     v
+[ML Features (MACD, OBV, MA diff, pct change)]
+     |
+     v
+[ML Model (RandomForest)] ---> [Streamlit UI]
 ```
 
 ---
@@ -181,11 +185,4 @@ graph LR
 
 MIT License — See [LICENSE](LICENSE) for details.
 
-```
-
----
-
-Now the **Mermaid diagram** will render correctly on GitHub without the “Unable to render rich display” error.  
-
-If you want, I can also **add shields.io badges** at the top so it looks like a professional GitHub project page. That would make it even more polished.
-```
+``
