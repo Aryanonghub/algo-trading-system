@@ -267,10 +267,3 @@ This system is not financial advice.
 Markets involve risk; past behavior does not guarantee future outcomes.
 
 ---
-
-If you want, I can also:
-
-* ✍️ Write a **short README summary** for recruiters
-* 📊 Add **feature importance explanation section**
-* 🧠 Add **“How to interpret predictions”** for non-ML users
-
