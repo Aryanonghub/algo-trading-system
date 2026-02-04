@@ -1,45 +1,56 @@
 import pandas as pd
-import pandas_ta as ta
+import numpy as np
 
 
 def add_indicators(df):
     """
     Calculates and adds technical indicators (RSI, SMA20, SMA50) to the DataFrame.
     """
-    # Calculate RSI
-    df['RSI'] = ta.rsi(df['Close'], length=14)
 
-    # Calculate 20-day and 50-day SMAs
-    df['SMA20'] = ta.sma(df['Close'], length=20)
-    df['SMA50'] = ta.sma(df['Close'], length=50)
+    # === Simple Moving Averages ===
+    df["SMA20"] = df["Close"].rolling(window=20).mean()
+    df["SMA50"] = df["Close"].rolling(window=50).mean()
 
-    df.dropna(inplace=True)  # Remove rows with NaN values after calculation
+    # === RSI (14-period, Wilder’s method) ===
+    delta = df["Close"].diff()
+
+    gain = delta.clip(lower=0)
+    loss = -delta.clip(upper=0)
+
+    avg_gain = gain.rolling(window=14).mean()
+    avg_loss = loss.rolling(window=14).mean()
+
+    rs = avg_gain / avg_loss
+    df["RSI"] = 100 - (100 / (1 + rs))
+
+    df.dropna(inplace=True)
     return df
 
 
 def generate_signals(df):
     """
     Implements the trading strategy to generate buy signals.
-    - Buy Signal: RSI < 30
-    - Confirmation: 20-DMA crosses above 50-DMA
+    - Buy Signal: 20-SMA crosses above 50-SMA
     """
+
     signals = []
 
-    # Use iloc to iterate safely, starting from the second row for previous day comparison
     for i in range(1, len(df)):
         current_row = df.iloc[i]
-        prev_row = df.iloc[i-1]
+        prev_row = df.iloc[i - 1]
 
-        # Buy condition 1: 20-SMA crosses above 50-SMA
-        crossover_condition = (prev_row['SMA20'] < prev_row['SMA50']) and \
-                              (current_row['SMA20'] > current_row['SMA50'])
+        # Golden crossover condition
+        crossover_condition = (
+            prev_row["SMA20"] < prev_row["SMA50"]
+            and current_row["SMA20"] > current_row["SMA50"]
+        )
 
         if crossover_condition:
             trade_info = {
-                'Date': current_row.name,  # .name holds the index (Date)
-                'Ticker': current_row['Ticker'],
-                'Signal': 'BUY',
-                'Price': current_row['Close']
+                "Date": current_row.name,
+                "Ticker": current_row["Ticker"],
+                "Signal": "BUY",
+                "Price": current_row["Close"],
             }
             signals.append(trade_info)
 
