@@ -1,88 +1,107 @@
-
-## 📌 Project Summary (Algorithmic Trading System)
-
-This project is an **event-driven algorithmic trading analysis system** built using **Python, Machine Learning, and Streamlit**.
-It analyzes **NIFTY 50 equity data**, converts raw market information into **explainable trading events** (trend shifts, breakouts, volume confirmation, momentum, volatility), and uses a **RandomForest ML model** to estimate the **probability of next-day price movement**.
-
-The system emphasizes **interpretability over black-box predictions** and demonstrates strong software engineering practices, including clean feature engineering, data sanitization, modular design, and end-to-end pipeline integration. Results are visualized through an **interactive Streamlit dashboard**, logged to **Google Sheets**, and can be queried via a **Telegram bot**.
-
-**Key skills demonstrated**:
-
-* Machine Learning on financial time-series (RandomForest)
-* Feature engineering & data pipelines
-* Event-based market modeling (no RSI / fragile indicators)
-* Streamlit dashboards & visualization
-* API integrations (yfinance, Google Sheets, Telegram)
-* Production-safe data handling & debugging
-
----
 # 📈 Algorithmic Trading System
 
-**(Python · Streamlit · Event-Based ML)**
+**Python · Streamlit · Event-Based ML · Telegram Integration**
 
-A prototype **algorithmic trading & analysis system** for **NIFTY 50 equities**, designed to be:
+---
 
-* **Explainable** (event-based signals, not black-box indicators)
-* **ML-assisted** (probability-based, not auto-trading)
-* **Engineer-friendly** (clean pipeline, no fragile dependencies)
+## 📌 Project Overview
+
+This project is an **event-driven algorithmic trading analysis system** built using **Python, Machine Learning, and Streamlit**.
+
+It analyzes **NIFTY 50 equity data**, transforms raw OHLCV market data into **interpretable trading events**, and uses a **RandomForest classifier** to estimate the **probability of next-day price movement**.
+
+Unlike black-box trading systems, this project prioritizes:
+
+* ✅ Explainability
+* ✅ Feature transparency
+* ✅ Modular architecture
+* ✅ Production-safe data handling
+
+Outputs are visualized through an **interactive Streamlit dashboard**, logged to **Google Sheets**, and optionally accessible via a **Telegram bot interface**.
 
 ---
 
 ## 🧠 What This System Does (In One Paragraph)
 
-This system ingests daily OHLCV data, derives **event-based market features** (trend shifts, breakouts, volume confirmation, momentum, volatility), and trains a **RandomForest classifier** to estimate the **probability of next-day price movement**.
-The ML model does **not auto-trade** — it supports decision-making by ranking market conditions that historically led to upward moves. Results are visualized via **Streamlit**, logged to **Google Sheets**, and can optionally be queried via **Telegram**.
+The system ingests daily stock data, engineers event-based features (trend shifts, breakouts, volume confirmation, momentum, volatility), and trains a **RandomForest model** to predict the probability that tomorrow’s closing price will be higher than today’s.
+
+The model does **not auto-trade**.
+It provides probabilistic decision support to help evaluate favorable market conditions.
 
 ---
 
-## 🚀 Key Features
+## 🚀 Core Capabilities
 
-* **Automated Data Ingestion** — Daily OHLCV data via `yfinance`
-* **Event-Based Strategy Engine**
+### 📊 1. Automated Data Pipeline
 
-  * SMA(20/50) crossover
-  * 20-day price breakout
-  * Volume spike & trend confirmation
-* **ML Prediction Layer (RandomForest)**
+* Daily OHLCV data via `yfinance`
+* Data sanitization & preprocessing
+* Multi-ticker support
 
-  * Predicts **next-day direction probability**
-  * Uses explainable, event-based features (no RSI)
-* **Google Sheets Logging**
+### 📈 2. Event-Based Strategy Engine
 
-  * Signal snapshots
-  * Model outputs
-  * Trade journaling
-* **Interactive Streamlit Dashboard**
+Signals are derived from structural market conditions:
 
-  * Multi-ticker analysis
-  * Feature visualization
-* **Optional Telegram Interface**
+* SMA (20/50) crossover detection
+* 20-day breakout logic
+* Volume spike & trend confirmation
+* Momentum & volatility regime detection
 
-  * Query signals & highlights
+No fragile RSI-based heuristics.
 
 ---
 
-## 🧠 ML Model Overview (High Level)
+### 🤖 3. Machine Learning Layer
 
-**Problem Type**: Supervised classification
-**Target**:
+* **Model**: RandomForestClassifier
+* **Problem Type**: Supervised classification
+* **Target Variable**:
 
 ```
-1 → Tomorrow’s close > Today’s close
+1 → Tomorrow’s Close > Today’s Close  
 0 → Otherwise
 ```
 
-**Model**: RandomForestClassifier
-**Why RandomForest**:
+Why RandomForest?
 
-* Handles non-linear feature interactions
+* Handles non-linear interactions
 * No feature scaling required
-* Robust on tabular financial data
-* Produces stable probability estimates
+* Stable on tabular financial data
+* Produces reliable probability estimates
+
+---
+
+### 📊 4. Interactive Streamlit Dashboard
+
+* Multi-ticker selection
+* Backtesting over custom date ranges
+* Visualized SMA crossovers
+* Buy/Sell markers
+* ML accuracy display
+* Indicator overlays using Plotly
+
+---
+
+### 📄 5. Google Sheets Logging
+Not Working!
+* Signal snapshots
+* Model accuracy tracking
+* Optional trade journal logging
+
+---
+
+### 🔔 6. Telegram Bot (Optional)
+
+* Query crossover events
+* View stock summaries
+* Get signal breakdowns
+* Designed for explainable outputs (not spam alerts)
 
 ---
 
 ## 🧩 Feature Groups Used for Prediction
+
+Each trading day is treated as a **market snapshot**.
 
 ### 1️⃣ Trend & Structure
 
@@ -101,7 +120,7 @@ The ML model does **not auto-trade** — it supports decision-making by ranking 
 * `volume_spike`
 * `volume_ma_ratio`
 * `volume_change`
-* `OBV` (normalized)
+* Normalized OBV
 
 ### 4️⃣ Momentum
 
@@ -113,22 +132,27 @@ The ML model does **not auto-trade** — it supports decision-making by ranking 
 
 * `volatility_5d`
 
-👉 Each trading day is treated as a **market snapshot**, and the model learns which combinations of these features historically led to upward moves.
+The model learns which combinations historically led to upward movement.
 
 ---
 
 ## 🛠️ Tech Stack
 
-* **Language**: Python ≥ 3.10
-* **Data**: `yfinance`
-* **ML**: scikit-learn (RandomForest)
-* **UI**: Streamlit, Plotly
-* **Sheets API**: gspread, oauth2client
-* **Alerts (Optional)**: Telegram Bot API
+| Layer    | Technology                  |
+| -------- | --------------------------- |
+| Language | Python ≥ 3.10               |
+| Data     | yfinance                    |
+| ML       | scikit-learn (RandomForest) |
+| UI       | Streamlit + Plotly          |
+| Logging  | Google Sheets (gspread)     |
+| Alerts   | Telegram Bot API            |
 
-> ❌ No `pandas-ta`
-> ❌ No RSI
-> ✅ Fully dependency-stable
+**Design Choices:**
+
+* ❌ No `pandas-ta`
+* ❌ No RSI
+* ✅ Stable dependency structure
+* ✅ Fully modular architecture
 
 ---
 
@@ -136,38 +160,38 @@ The ML model does **not auto-trade** — it supports decision-making by ranking 
 
 ```
 algo-trading-system/
-├── main.py            # End-to-end pipeline runner
-├── ui.py              # Streamlit dashboard
-├── strategy.py        # Event-based signal logic (SMA, breakout, volume)
-├── ml_model.py        # Feature engineering + ML training
-├── sheets.py          # Google Sheets logging
-├── utils.py           # Logging & Telegram helpers
-├── requirements.txt   # Dependencies
-└── credentials.json   # Google service account key (gitignored)
+│
+├── main.py          # End-to-end pipeline
+├── ui.py            # Streamlit dashboard
+├── strategy.py      # Event-based signal logic
+├── ml_model.py      # Feature engineering + ML model
+├── sheets.py        # Google Sheets logging
+├── bot.py           # Telegram bot integration
+├── utils.py         # Logging utilities
+├── requirements.txt
+└── .gitignore
 ```
 
 ---
 
 ## ⚡ Quick Start
 
-### 1️⃣ Clone the repository
+### 1️⃣ Clone the Repository
 
 ```bash
 git clone https://github.com/Aryanonghub/algo-trading-system.git
 cd algo-trading-system
 ```
 
-### 2️⃣ Create & activate a virtual environment
+### 2️⃣ Create Virtual Environment
 
 ```bash
 python -m venv venv
-# macOS / Linux
-source venv/bin/activate
-# Windows
-.\venv\Scripts\Activate.ps1
+source venv/bin/activate   # macOS/Linux
+.\venv\Scripts\Activate.ps1  # Windows
 ```
 
-### 3️⃣ Install dependencies
+### 3️⃣ Install Dependencies
 
 ```bash
 pip install -r requirements.txt
@@ -175,95 +199,89 @@ pip install -r requirements.txt
 
 ---
 
-## 💻 Usage
+## 💻 Running the System
 
-### Option A — Streamlit Dashboard (Recommended)
+### ▶ Streamlit Dashboard (Recommended)
 
 ```bash
 python -m streamlit run ui.py
 ```
 
-* Select tickers & date range
-* View signals, features, and ML accuracy
-* Inspect event highlights per stock
-
-### Option B — CLI Pipeline
+### ▶ CLI Pipeline
 
 ```bash
 python main.py
 ```
 
-* Runs the full pipeline
-* Logs outputs to Google Sheets
+### ▶ Telegram Bot
+
+```bash
+python bot.py
+```
+
+Make sure to set:
+
+```
+export BOT_TOKEN=your_telegram_token
+```
 
 ---
 
-## 📊 Google Sheets Output
-
-* **Signal Snapshots** — Event flags per day
-* **ML Outputs** — Accuracy & prediction metadata
-* **Trade Journal** — Optional backtest logs
-
----
-
-## 🔔 Optional Telegram Integration
-
-* Query signals (e.g. breakouts, strong trends)
-* Receive daily highlights
-* Designed for **explainability**, not spam alerts
-
----
-
-## 🧭 System Architecture (Conceptual)
+## 🧭 Conceptual Architecture
 
 ```
 [Streamlit UI]
-      |
-      v
-[Data Fetcher (yfinance)]
-      |
-      v
-[Event-Based Feature Engine]
-      |
-      +--> [Google Sheets Logging]
-      |
-      +--> [Telegram Queries]
-      |
-      v
-[ML Model (RandomForest)]
-      |
-      v
-[Probability Estimates + UI]
+        |
+        v
+[Data Fetcher - yfinance]
+        |
+        v
+[Feature Engineering Engine]
+        |
+        +--> Google Sheets Logging
+        +--> Telegram Queries
+        |
+        v
+[RandomForest Model]
+        |
+        v
+[Probability Output + Visual Dashboard]
 ```
 
 ---
 
-## 🛠️ Troubleshooting
+## 📊 Expected ML Accuracy
 
-* **Empty data** → Check ticker format (e.g. `RELIANCE.NS`)
-* **Low ML accuracy** → Normal for financial data (55–65% is strong)
-* **Google auth issues** → Verify `credentials.json` & sheet sharing
-* **No signals** → Market conditions may not meet event thresholds
+Financial prediction is inherently noisy.
+
+Typical realistic accuracy:
+
+```
+55% – 65%
+```
+
+Anything consistently above this in live conditions is strong.
 
 ---
 
 ## 📅 Roadmap
 
-* Probability-based signal ranking
-* Feature importance export (Sheets)
 * Walk-forward validation
-* Backtesting engine (PnL, drawdown)
-* Position sizing & risk management
-* Live broker integration (Zerodha / Upstox)
+* Feature importance export
+* Full backtesting engine (PnL, drawdown)
+* Position sizing logic
+* Risk management module
 * Dockerization
-* Unit & data integrity tests
+* Unit testing
+* Broker API integration (Zerodha / Upstox)
 
 ---
 
 ## ⚠️ Disclaimer
 
-**Educational & research use only.**
-This system is not financial advice.
-Markets involve risk; past behavior does not guarantee future outcomes.
+This project is for **educational and research purposes only**.
+
+It does not constitute financial advice.
+Trading involves risk. Past performance does not guarantee future results.
 
 ---

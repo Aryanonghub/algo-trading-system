@@ -1,94 +1,152 @@
+"""
+main.py
+
+Core trading pipeline logic for the Telegram Bot and Streamlit UI.
+
+This module:
+- Downloads historical stock data
+- Calculates technical indicators (SMA20, SMA50, RSI)
+- Detects crossover signals (BUY / SELL)
+- Returns summary statistics
+"""
+
 import yfinance as yf
 import pandas as pd
 from datetime import datetime, timedelta
 import logging
 
-# Import project modules
-from utils import setup_logging, send_telegram_alert
+from utils import setup_logging
 from strategy import add_indicators, generate_signals
-from sheets import authorize_sheets, log_trades_to_sheet, get_or_create_worksheet
-from ml_model import train_ml_model, create_features
 
 
-def run_trading_pipeline():
+# ======================================================
+# CONFIGURATION
+# ======================================================
+
+# Number of days of historical data to scan
+DATA_LOOKBACK_DAYS = 365   # 1 Year
+
+
+# ======================================================
+# MAIN TRADING PIPELINE
+# ======================================================
+
+def run_trading_pipeline(ticker: str) -> dict:
     """
-    The main function to orchestrate the entire algo-trading process.
+    Runs the full trading pipeline for a single stock ticker.
+
+    Parameters:
+        ticker (str): Stock symbol (e.g., "RELIANCE.NS")
+
+    Returns:
+        dict:
+            {
+                "total_crossovers": int,
+                "last_5_crossovers": list,
+                "summary": dict
+            }
     """
+
     logger = setup_logging()
-    logger.info("--- Starting Algo-Trading System ---")
+    logger.info(f"Running pipeline for {ticker}")
 
-    # --- 1. CONFIGURATION & DATA INGESTION ---
-    nifty50_tickers = ['RELIANCE.NS', 'HDFCBANK.NS', 'MARUTI.NS']
+    # --------------------------------------------------
+    # STEP 1: Download Historical Data
+    # --------------------------------------------------
+
     end_date = datetime.now()
-    start_date = end_date - timedelta(days=730)
+    start_date = end_date - timedelta(days=DATA_LOOKBACK_DAYS)
 
-    logger.info(
-        f"Fetching data for {nifty50_tickers} from {start_date.date()} to {end_date.date()}")
     try:
-        data = yf.download(nifty50_tickers, start=start_date,
-                           end=end_date, group_by='ticker')
-        if data.empty:
-            raise ValueError("No data downloaded from yfinance.")
-    except Exception as e:
-        logger.error(f"Failed to download stock data: {e}")
-        return
+        df = yf.download(ticker, start=start_date, end=end_date)
 
-    all_signals = []
-    all_data_for_ml = []
+        # Fix MultiIndex columns (sometimes returned by yfinance)
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
 
-    # --- 2. STRATEGY & FEATURE CALCULATION (PER TICKER) ---
-    for ticker in nifty50_tickers:
-        logger.info(f"Processing ticker: {ticker}")
-        df = data[ticker].copy()
-        df.dropna(inplace=True)
         if df.empty:
-            continue
+            logger.warning("Downloaded DataFrame is empty.")
+            return {
+                "total_crossovers": 0,
+                "last_5_crossovers": [],
+                "summary": None
+            }
 
-        df['Ticker'] = ticker
-        df_with_indicators = add_indicators(df)
-        df_with_ml_features = create_features(df_with_indicators)
-        all_data_for_ml.append(df_with_ml_features)
-        
-        # --- Using the original, correct strategy ---
-        signals = generate_signals(df_with_indicators) 
-        if not signals.empty:
-            all_signals.append(signals)
-            logger.info(f"Found {len(signals)} signals for {ticker}.")
-    
-    # --- 3. GOOGLE SHEETS AUTOMATION (UPDATED LOGIC) ---
-    gspread_client = authorize_sheets()
-    if gspread_client:
-        if all_signals:
-            logger.info("Signals found. Logging trades to Google Sheets.")
-            final_signals_df = pd.concat(all_signals, ignore_index=True)
-            log_trades_to_sheet(gspread_client, 'AlgoTrading_Assignment_Log', final_signals_df)
-            send_telegram_alert(f"Trade backtest complete. {len(final_signals_df)} signals logged to Google Sheets.")
-        else:
-            # --- THIS IS THE NEW FIX ---
-            logger.info("No trade signals found. Clearing old data from Google Sheets.")
-            try:
-                spreadsheet = gspread_client.open('AlgoTrading_Assignment_Log')
-                # Clear each sheet to reflect the "no signals" result
-                get_or_create_worksheet(spreadsheet, "Trade Log").clear()
-                get_or_create_worksheet(spreadsheet, "Summary P&L").clear()
-                get_or_create_worksheet(spreadsheet, "Win Ratio").clear()
-                # Optional: Add headers back to the empty sheets
-                get_or_create_worksheet(spreadsheet, "Trade Log").append_row(["Date", "Stock", "Signal", "Price", "P&L"])
-                get_or_create_worksheet(spreadsheet, "Summary P&L").append_row(["Metric", "Value"])
-                get_or_create_worksheet(spreadsheet, "Win Ratio").append_row(["Metric", "Value"])
-                logger.info("Successfully cleared sheets.")
-            except Exception as e:
-                logger.error(f"Failed to clear Google Sheets: {e}")
-            send_telegram_alert("Trade backtest complete. No new signals were found.")
+    except Exception as e:
+        logger.error(f"Data download failed: {e}")
+        return {
+            "total_crossovers": 0,
+            "last_5_crossovers": [],
+            "summary": None
+        }
 
-    # --- 4. ML AUTOMATION (BONUS) ---
-    if all_data_for_ml:
-        full_ml_data = pd.concat(all_data_for_ml)
-        accuracy = train_ml_model(full_ml_data)
-        send_telegram_alert(f"ML Model training complete. Prediction Accuracy: {accuracy:.2f}%")
+    # Add ticker column for identification
+    df["Ticker"] = ticker
 
-    logger.info("--- Algo-Trading System Run Finished ---")
+    # --------------------------------------------------
+    # STEP 2: Add Technical Indicators
+    # --------------------------------------------------
+
+    df = add_indicators(df)
+
+    # --------------------------------------------------
+    # STEP 3: Generate Crossover Signals
+    # --------------------------------------------------
+
+    signals = generate_signals(df)
+
+    if signals.empty:
+        total_crossovers = 0
+        all_crossovers = []
+    else:
+        # Ensure Date column is datetime
+        signals["Date"] = pd.to_datetime(signals["Date"])
+
+        # Sort by latest first
+        signals_sorted = signals.sort_values(by="Date", ascending=False)
+
+        total_crossovers = len(signals_sorted)
+
+        # Convert all crossover rows to clean dictionary format
+        all_crossovers = []
+
+        for _, row in signals_sorted.iterrows():
+            all_crossovers.append({
+                "Date": row["Date"].strftime("%Y-%m-%d"),
+                "Signal": row["Signal"],
+                "Price": float(row["Price"])
+            })
+
+    # --------------------------------------------------
+    # STEP 4: Build Summary Statistics
+    # --------------------------------------------------
+
+    current_price = float(df["Close"].iloc[-1])
+    highest_price = float(df["High"].max())
+    lowest_price = float(df["Low"].min())
+
+    summary = {
+        "current_price": round(current_price, 2),
+        "highest_price": round(highest_price, 2),
+        "lowest_price": round(lowest_price, 2),
+        "data_period_days": DATA_LOOKBACK_DAYS
+    }
+
+    # --------------------------------------------------
+    # FINAL RETURN STRUCTURE
+    # --------------------------------------------------
+
+    return {
+        "total_crossovers": total_crossovers,
+        "last_5_crossovers": all_crossovers,  # contains ALL crossovers
+        "summary": summary
+    }
 
 
-if __name__ == '__main__':
-    run_trading_pipeline()
+# ======================================================
+# LOCAL TESTING
+# ======================================================
+
+if __name__ == "__main__":
+    result = run_trading_pipeline("RELIANCE.NS")
+    print(result)

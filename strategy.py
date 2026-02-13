@@ -1,17 +1,30 @@
 import pandas as pd
 import numpy as np
 
+print("USING UPDATED STRATEGY FILE")
+
+
+# ======================================================
+# INDICATOR CALCULATION
+# ======================================================
 
 def add_indicators(df):
     """
-    Calculates and adds technical indicators (RSI, SMA20, SMA50) to the DataFrame.
+    Adds technical indicators:
+    - SMA20
+    - SMA50
+    - RSI (14 period)
     """
 
-    # === Simple Moving Averages ===
+    # ==============================
+    # Moving Averages
+    # ==============================
     df["SMA20"] = df["Close"].rolling(window=20).mean()
     df["SMA50"] = df["Close"].rolling(window=50).mean()
 
-    # === RSI (14-period, Wilder’s method) ===
+    # ==============================
+    # RSI (14 period)
+    # ==============================
     delta = df["Close"].diff()
 
     gain = delta.clip(lower=0)
@@ -24,34 +37,55 @@ def add_indicators(df):
     df["RSI"] = 100 - (100 / (1 + rs))
 
     df.dropna(inplace=True)
+
     return df
 
 
+# ======================================================
+# SIGNAL GENERATION (VECTORISED VERSION)
+# ======================================================
+
 def generate_signals(df):
     """
-    Implements the trading strategy to generate buy signals.
-    - Buy Signal: 20-SMA crosses above 50-SMA
+    Detects crossover signals:
+
+    BUY  -> SMA20 crosses ABOVE SMA50
+    SELL -> SMA20 crosses BELOW SMA50
     """
 
-    signals = []
+    if df.empty:
+        return pd.DataFrame()
 
-    for i in range(1, len(df)):
-        current_row = df.iloc[i]
-        prev_row = df.iloc[i - 1]
+    signals = df.copy()
 
-        # Golden crossover condition
-        crossover_condition = (
-            prev_row["SMA20"] < prev_row["SMA50"]
-            and current_row["SMA20"] > current_row["SMA50"]
-        )
+    # Previous values
+    signals["SMA20_prev"] = signals["SMA20"].shift(1)
+    signals["SMA50_prev"] = signals["SMA50"].shift(1)
 
-        if crossover_condition:
-            trade_info = {
-                "Date": current_row.name,
-                "Ticker": current_row["Ticker"],
-                "Signal": "BUY",
-                "Price": current_row["Close"],
-            }
-            signals.append(trade_info)
+    # BUY condition (Golden Cross)
+    buy_condition = (
+        (signals["SMA20_prev"] < signals["SMA50_prev"]) &
+        (signals["SMA20"] > signals["SMA50"])
+    )
 
-    return pd.DataFrame(signals)
+    # SELL condition (Death Cross)
+    sell_condition = (
+        (signals["SMA20_prev"] > signals["SMA50_prev"]) &
+        (signals["SMA20"] < signals["SMA50"])
+    )
+
+    signals["Signal"] = np.where(buy_condition, "BUY",
+                          np.where(sell_condition, "SELL", None))
+
+    # Keep only crossover rows
+    signals = signals[signals["Signal"].notna()]
+
+    # Build final output
+    output = signals[["Ticker", "Signal", "Close"]].copy()
+    output.rename(columns={"Close": "Price"}, inplace=True)
+    output["Date"] = signals.index
+
+    # Reorder columns
+    output = output[["Date", "Ticker", "Signal", "Price"]]
+
+    return output.reset_index(drop=True)
