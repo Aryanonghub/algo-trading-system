@@ -27,31 +27,26 @@ from ml_model import train_ml_model, create_features
 # PAGE CONFIGURATION
 # ---------------------------------------------------
 
-# Configure Streamlit page settings
 st.set_page_config(
     page_title="Algo-Trading System Dashboard",
     page_icon="📈",
     layout="wide"
 )
 
-# Main Title
 st.title("📈 Algorithmic Trading Strategy Dashboard")
-
-# Short description below title
 st.markdown(
     "An interactive dashboard to backtest a trading strategy based on Moving Average Crossover."
 )
 
 
 # ---------------------------------------------------
-# SIDEBAR CONFIGURATION PANEL
+# SIDEBAR CONFIGURATION
 # ---------------------------------------------------
 
 with st.sidebar:
 
     st.header("⚙️ Configuration")
 
-    # Dictionary mapping company names to Yahoo Finance tickers
     nifty50_tickers = {
         "Reliance Industries": "RELIANCE.NS",
         "HDFC Bank": "HDFCBANK.NS",
@@ -61,18 +56,16 @@ with st.sidebar:
         "ICICI Bank": "ICICIBANK.NS"
     }
 
-    # Multi-select for choosing stocks
     selected_stocks_names = st.multiselect(
         "Select NIFTY 50 Stocks to Analyze",
         options=list(nifty50_tickers.keys()),
         default=["Reliance Industries"]
     )
 
-    # Default backtest period: Last 365 days (1 year)
+    # Default to 1 Year
     end_date = datetime.now()
     start_date_default = end_date - timedelta(days=365)
 
-    # Date range selector
     date_range = st.date_input(
         "Select Date Range for Backtest",
         value=(start_date_default, end_date),
@@ -81,43 +74,60 @@ with st.sidebar:
     )
 
     start_date, end_date = date_range
+    # ---------------------------------------------------
+# DATA EXPLANATION NOTE (For Transparency)
+# ---------------------------------------------------
 
-    # Run button triggers full analysis
+    st.caption(
+    f"""
+ℹ️ **How data is handled:**
+
+• You selected data from **{start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}**
+
+• To correctly compute moving averages (SMA20 & SMA50),
+  the system internally fetches ~60 extra days of historical data.
+
+• Only the selected date range is shown in charts and signals.
+"""
+)
+
+
     run_button = st.button("🚀 Run Analysis", use_container_width=True)
 
 
 # ---------------------------------------------------
-# MAIN ANALYSIS SECTION
+# MAIN ANALYSIS
 # ---------------------------------------------------
 
-# Only run analysis if user clicks button AND selects at least one stock
 if run_button and selected_stocks_names:
 
-    # Convert selected company names to ticker symbols
     selected_tickers = [
         nifty50_tickers[name]
         for name in selected_stocks_names
     ]
 
-    # Containers for storing results
     all_signals = []
     all_data_for_ml = []
     processed_data_for_charts = {}
 
-    # Loading spinner while processing
     with st.spinner(
         "Running analysis... Fetching data, backtesting strategy, and training ML model..."
     ):
 
-        # Process each selected ticker individually
         for ticker in selected_tickers:
 
             # ---------------------------------------------------
-            # DATA DOWNLOAD
+            # DATA DOWNLOAD WITH WARM-UP BUFFER
             # ---------------------------------------------------
 
-            # Download historical price data from Yahoo Finance
-            df = yf.download(ticker, start=start_date, end=end_date)
+            BUFFER_DAYS = 60
+            buffer_start_date = start_date - timedelta(days=BUFFER_DAYS)
+
+            df = yf.download(
+                ticker,
+                start=buffer_start_date,
+                end=end_date
+            )
 
             if df.empty:
                 st.warning(
@@ -125,13 +135,11 @@ if run_button and selected_stocks_names:
                 )
                 continue
 
-            # Flatten MultiIndex columns if returned by yfinance
+            # Fix MultiIndex columns if needed
             if isinstance(df.columns, pd.MultiIndex):
                 df.columns = df.columns.get_level_values(0)
 
             df.dropna(inplace=True)
-
-            # Add ticker column (used by ML + signals)
             df["Ticker"] = ticker
 
             # ---------------------------------------------------
@@ -140,18 +148,26 @@ if run_button and selected_stocks_names:
 
             df_with_indicators = add_indicators(df)
 
-            # Save copy for chart plotting
+            # ---------------------------------------------------
+            # TRIM TO USER-SELECTED DATE RANGE
+            # ---------------------------------------------------
+
+            df_with_indicators = df_with_indicators[
+                (df_with_indicators.index >= pd.to_datetime(start_date)) &
+                (df_with_indicators.index <= pd.to_datetime(end_date))
+            ]
+
             processed_data_for_charts[ticker] = df_with_indicators.copy()
 
             # ---------------------------------------------------
-            # FEATURE ENGINEERING FOR ML
+            # ML FEATURE ENGINEERING
             # ---------------------------------------------------
 
             df_with_ml_features = create_features(df_with_indicators)
             all_data_for_ml.append(df_with_ml_features)
 
             # ---------------------------------------------------
-            # GENERATE BUY / SELL SIGNALS
+            # GENERATE SIGNALS
             # ---------------------------------------------------
 
             signals = generate_signals(df_with_indicators)
@@ -159,24 +175,19 @@ if run_button and selected_stocks_names:
             if not signals.empty:
                 all_signals.append(signals)
 
-    # Analysis finished
     st.success("Analysis Complete!")
 
 
     # ---------------------------------------------------
-    # MACHINE LEARNING RESULTS SECTION
+    # MACHINE LEARNING SECTION
     # ---------------------------------------------------
 
     st.header("🧠 Machine Learning Model Results")
 
     if all_data_for_ml:
-
-        # Combine all stock data into single dataframe
         full_ml_data = pd.concat(all_data_for_ml)
 
         if not full_ml_data.empty:
-
-            # Train model & compute accuracy
             accuracy = train_ml_model(full_ml_data)
 
             st.metric(
@@ -189,28 +200,25 @@ if run_button and selected_stocks_names:
 
 
     # ---------------------------------------------------
-    # SIGNALS DISPLAY SECTION
+    # SIGNALS SECTION
     # ---------------------------------------------------
 
     st.header("📜 Backtest & Trade Signals")
 
     if all_signals:
-
         final_signals_df = pd.concat(all_signals, ignore_index=True)
 
         st.info(
             f"Found a total of **{len(final_signals_df)}** trade signals."
         )
 
-        # Display signal table
         st.dataframe(final_signals_df)
-
     else:
         st.info("No trade signals generated for selected range.")
 
 
     # ---------------------------------------------------
-    # PRICE + INDICATOR CHART SECTION
+    # CHART SECTION
     # ---------------------------------------------------
 
     st.header("📊 Stock Price Charts with Indicators")
@@ -223,9 +231,7 @@ if run_button and selected_stocks_names:
 
             fig = go.Figure()
 
-            # ---------------------------
-            # Close Price Line
-            # ---------------------------
+            # Close Price
             fig.add_trace(go.Scatter(
                 x=df_chart.index,
                 y=df_chart['Close'],
@@ -234,9 +240,7 @@ if run_button and selected_stocks_names:
                 line=dict(color='blue')
             ))
 
-            # ---------------------------
-            # 20-Day Moving Average
-            # ---------------------------
+            # SMA20
             fig.add_trace(go.Scatter(
                 x=df_chart.index,
                 y=df_chart['SMA20'],
@@ -245,9 +249,7 @@ if run_button and selected_stocks_names:
                 line=dict(color='orange', dash='dot')
             ))
 
-            # ---------------------------
-            # 50-Day Moving Average
-            # ---------------------------
+            # SMA50
             fig.add_trace(go.Scatter(
                 x=df_chart.index,
                 y=df_chart['SMA50'],
@@ -256,12 +258,8 @@ if run_button and selected_stocks_names:
                 line=dict(color='green', dash='dash')
             ))
 
-            # ---------------------------
-            # BUY / SELL MARKERS
-            # ---------------------------
-
+            # Plot BUY / SELL markers
             if all_signals:
-
                 stock_signals = final_signals_df[
                     final_signals_df['Ticker'] == ticker
                 ]
@@ -274,7 +272,6 @@ if run_button and selected_stocks_names:
                     stock_signals['Signal'] == "SELL"
                 ]
 
-                # Plot BUY markers
                 if not buy_signals.empty:
                     fig.add_trace(go.Scatter(
                         x=buy_signals['Date'],
@@ -288,7 +285,6 @@ if run_button and selected_stocks_names:
                         )
                     ))
 
-                # Plot SELL markers
                 if not sell_signals.empty:
                     fig.add_trace(go.Scatter(
                         x=sell_signals['Date'],
@@ -302,7 +298,6 @@ if run_button and selected_stocks_names:
                         )
                     ))
 
-            # Layout formatting
             fig.update_layout(
                 title=f'Price and Moving Averages for {ticker}',
                 xaxis_title='Date',
@@ -311,10 +306,7 @@ if run_button and selected_stocks_names:
                 template='plotly_white'
             )
 
-            # Render chart
             st.plotly_chart(fig, use_container_width=True)
 
-
-# If button pressed but no stocks selected
 elif run_button:
     st.warning("Please select at least one stock to analyze.")
